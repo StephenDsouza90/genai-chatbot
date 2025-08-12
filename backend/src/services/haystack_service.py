@@ -1,5 +1,6 @@
 import tempfile
 import os
+from datetime import datetime
 from typing import List, Dict, Any
 from uuid import UUID
 
@@ -124,12 +125,6 @@ class HaystackService:
                     "presence_penalty": self.settings.PRESENCE_PENALTY,
                     "frequency_penalty": self.settings.FREQUENCY_PENALTY,
                 }
-
-                # temperature=self.settings.TEMPERATURE,
-                # max_tokens=self.settings.MAX_TOKENS,
-                # top_p=self.settings.TOP_P,
-                # presence_penalty=self.settings.PRESENCE_PENALTY,
-                # frequency_penalty=self.settings.FREQUENCY_PENALTY,
             )
         )
         
@@ -144,12 +139,15 @@ class HaystackService:
         You are a helpful assistant that answers questions based on the provided context and chat history.
         
         IMPORTANT RULES:
-        1. Use information from the context documents to answer questions
-        2. Use the chat history to understand references (like "he", "she", "it", "they") and maintain conversation continuity
-        3. When pronouns or unclear references are used, look at the chat history to identify who or what is being discussed
-        4. If the context doesn't contain enough information to answer the question, say "I cannot answer this question based on the provided context"
-        5. Do not make assumptions beyond what can be reasonably inferred from the context and chat history
+        1. Use information from the context documents to answer questions.
+        2. Use the chat history to understand references (like "he", "she", "it", "they") and maintain conversation continuity.
+        3. When pronouns or unclear references are used, look at the chat history to identify who or what is being discussed.
+        4. If the context doesn't contain enough information to answer the question, say "I cannot answer this question based on the provided context" with giving a reason.
+        5. Do not make assumptions beyond what can be reasonably inferred from the context and chat history.
         6. If you're unsure about any detail, acknowledge the uncertainty
+        7. When calculating time periods or durations, use the current date: {{ current_date }}. Always calculate durations from the start date to the current date, not from any other reference point.
+        8. For any date-based calculations (experience, project duration, time periods, etc.), use the current date ({{ current_date }}) as the end point, not any other reference date.
+        9. You can perform future date calculations if given a specific future date, as long as you're only doing mathematical date arithmetic from known start dates.
         
         Context Documents:
         {% for document in documents %}
@@ -220,7 +218,8 @@ class HaystackService:
                 "retriever": {"filters": filters},
                 "prompt_builder": {
                     "question": question,
-                    "chat_history": haystack_history
+                    "chat_history": haystack_history,
+                    "current_date": datetime.now().strftime("%B %d, %Y")
                 }
             },
             include_outputs_from={"retriever"}
