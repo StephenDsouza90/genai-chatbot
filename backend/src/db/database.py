@@ -17,7 +17,13 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 async def init_db():
-    """Initialize database and create tables"""
+    """
+    Initialize database and create tables.
+
+    This function initializes the database and creates the tables.
+    It also enables the pgvector extension.
+    """
+
     async with engine.begin() as conn:
         # Enable pgvector extension
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -27,7 +33,13 @@ async def init_db():
 
 
 async def get_db():
-    """Dependency to get database session"""
+    """
+    Dependency to get database session.
+
+    This function is used to get the database session.
+    It returns the session and closes it after use.
+    """
+
     async with AsyncSessionLocal() as session:
         try:
             yield session

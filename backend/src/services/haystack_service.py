@@ -29,7 +29,19 @@ from src.core.config import Settings
 
 @component
 class MetadataAdder:
-    """Haystack component that adds provided metadata to each Document."""
+    """
+    Component for adding metadata to documents.
+
+    This component is used to add metadata to documents before they are indexed.
+    It is a simple component that adds the metadata to the documents.
+
+    Attributes:
+        documents: The documents to add metadata to.
+        meta: The metadata to add to the documents.
+
+    Methods:
+        run: Add metadata to documents.
+    """
 
     @component.output_types(documents=List[HaystackDocument])
     def run(
@@ -37,6 +49,13 @@ class MetadataAdder:
         documents: List[HaystackDocument],
         meta: Dict[str, Any] | None = None,
     ) -> Dict[str, List[HaystackDocument]]:
+        """
+        Add metadata to documents.
+
+        Args:
+            documents: The documents to add metadata to.
+            meta: The metadata to add to the documents.
+        """
         if meta:
             for doc in documents:
                 # Ensure meta exists and update
@@ -47,7 +66,30 @@ class MetadataAdder:
 
 
 class HaystackService:
+    """
+    Service for handling Haystack operations.
+
+    This service is responsible for initializing the Haystack pipelines and document store.
+    It also provides methods for processing documents and querying the RAG pipeline.
+
+    Attributes:
+        settings: The application settings.
+        document_store: The document store for storing documents.
+        indexing_pipeline: The pipeline for indexing documents.
+        rag_pipeline: The pipeline for querying documents.
+
+    Methods:
+        process_document: Process a document using the indexing pipeline.
+        query: Query the RAG pipeline.
+    """
     def __init__(self):
+        """
+        Initialize the HaystackService with the necessary settings.
+
+        This method initializes the HaystackService with the necessary settings.
+        It prepares the connection string for the document store and initializes the document store,
+        indexing pipeline, and RAG pipeline.
+        """
         self.settings = Settings()
 
         # Prepare a psycopg-compatible connection string for Pgvector
@@ -58,6 +100,19 @@ class HaystackService:
             )
 
         # Initialize PGVector document store (ensure dimension matches embedder)
+        self._init_document_store(pg_conn_str)
+
+        # Initialize pipelines
+        self._init_indexing_pipeline()
+        self._init_rag_pipeline()
+
+    def _init_document_store(self, pg_conn_str: str):
+        """
+        Initialize the document store.
+
+        Args:
+            pg_conn_str: The connection string for the document store.
+        """
         self.document_store = PgvectorDocumentStore(
             connection_string=Secret.from_token(pg_conn_str),
             table_name="haystack_documents",
@@ -66,12 +121,14 @@ class HaystackService:
             # recreate_table=True,
         )
 
-        # Initialize pipelines
-        self._init_indexing_pipeline()
-        self._init_rag_pipeline()
-
     def _init_indexing_pipeline(self):
-        """Initialize the document indexing pipeline"""
+        """
+        Initialize the document indexing pipeline.
+
+        This pipeline is used to index documents into the document store.
+        It converts the PDF documents into Haystack documents and adds metadata to them.
+        It then embeds the documents and writes them to the document store.
+        """
         self.indexing_pipeline = Pipeline()
 
         # Add components
@@ -105,7 +162,13 @@ class HaystackService:
         self.indexing_pipeline.connect("embedder", "writer")
 
     def _init_rag_pipeline(self):
-        """Initialize the RAG pipeline"""
+        """
+        Initialize the RAG pipeline.
+
+        This pipeline is used to query the document store for relevant documents.
+        It embeds the question and retrieves the top K most relevant documents.
+        It then passes the documents to the prompt builder to generate a response.
+        """
         self.rag_pipeline = Pipeline()
 
         # Add components
@@ -121,7 +184,8 @@ class HaystackService:
         self.rag_pipeline.add_component(
             "retriever",
             PgvectorEmbeddingRetriever(
-                document_store=self.document_store, top_k=self.settings.TOP_K
+                document_store=self.document_store,
+                top_k=self.settings.TOP_K
             ),
         )
         self.rag_pipeline.add_component(
@@ -151,7 +215,12 @@ class HaystackService:
         self.rag_pipeline.connect("prompt_builder", "llm")
 
     def _get_prompt_template(self) -> str:
-        """Get the prompt template for RAG"""
+        """
+        Get the prompt template for RAG.
+
+        This template is used to generate a response to a user's question.
+        It is a Jinja2 template that is used to generate a response to a user's question.
+        """
         return """
         Current date: {{ current_date }}
 
@@ -189,7 +258,20 @@ class HaystackService:
     async def process_document(
         self, file_content: bytes, filename: str, document_id: UUID
     ) -> Dict[str, Any]:
-        """Process a document using Haystack pipeline"""
+        """
+        Process a document using Haystack pipeline.
+
+        This method is used to process a document using the indexing pipeline.
+        It saves the file temporarily and runs the indexing pipeline.
+
+        Args:
+            file_content: The content of the document.
+            filename: The name of the document.
+            document_id: The ID of the document.
+
+        Returns:
+            Dict[str, Any]: The result of the indexing pipeline.
+        """
         # Save file temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
             temp_file.write(file_content)
@@ -225,7 +307,20 @@ class HaystackService:
         document_ids: List[UUID],
         chat_history: List[Dict[str, str]],
     ) -> Dict[str, Any]:
-        """Query documents using RAG pipeline"""
+        """
+        Query documents using RAG pipeline.
+
+        This method is used to query the document store for relevant documents.
+        It filters the documents by the document_ids and runs the RAG pipeline.
+
+        Args:
+            question: The question to query the document store with.
+            document_ids: The IDs of the documents to query the document store with.
+            chat_history: The chat history to use for the RAG pipeline.
+
+        Returns:
+            Dict[str, Any]: The result of the RAG pipeline.
+        """
         # Filter documents by document_ids
         filters = {
             "field": "meta.document_id",
@@ -276,7 +371,18 @@ class HaystackService:
     def _calculate_confidence(
         self, question: str, documents: List[HaystackDocument]
     ) -> float:
-        """Calculate confidence score based on document relevance and context"""
+        """
+        Calculate confidence score based on document relevance and context.
+
+        This method is used to calculate the confidence score based on the document relevance and context.
+
+        Args:
+            question: The question to calculate the confidence score for.
+            documents: The documents to calculate the confidence score for.
+
+        Returns:
+            float: The confidence score.
+        """
         # Simple scoring:
         # - 100% if question is in context
         # - 0% if not in context

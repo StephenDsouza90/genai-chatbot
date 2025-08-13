@@ -5,6 +5,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    """
+    Settings for the application.
+
+    This class is used to store the settings for the application.
+    """
+
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 

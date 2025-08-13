@@ -9,6 +9,12 @@ Base = declarative_base()
 
 
 class Document(Base):
+    """
+    Model for storing documents.
+
+    This model is used to store the documents in the database.
+    """
+
     __tablename__ = "documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

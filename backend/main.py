@@ -12,6 +12,9 @@ from src.db.redis import redis_client
 async def lifespan(app: FastAPI):
     """
     This is the lifespan of the application.
+
+    This function is used to initialize the database and Redis connection.
+    It also yields the application and disconnects from Redis.
     """
     # Startup
     await init_db()
@@ -50,5 +53,10 @@ app.include_router(chat_router, prefix="/api")
 async def health_check():
     """
     This is a health check endpoint.
+
+    This function is used to check the health of the application.
+
+    Returns:
+        Dict: The status of the application.
     """
     return {"status": "healthy"}

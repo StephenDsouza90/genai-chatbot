@@ -12,12 +12,41 @@ from src.services.haystack_service import HaystackService
 
 
 class DocumentService:
+    """
+    Service for handling document operations.
+
+    This service is responsible for uploading and processing PDF documents using the Haystack service.
+    It validates the file, reads its content, and creates a document record in the database.
+    The document is then processed with Haystack to generate embeddings and chunks.
+
+    Attributes:
+        haystack_service: The Haystack service for document processing.
+        settings: The application settings.
+    """
     def __init__(self, haystack_service: HaystackService):
+        """
+        Initialize the DocumentService with the necessary services.
+
+        Args:
+            haystack_service: The Haystack service for document processing.
+        """
         self.settings = Settings()
         self.haystack_service = haystack_service
 
     async def upload_file(self, file: UploadFile, db: AsyncSession) -> FileMetadata:
-        """Upload and process a PDF file using Haystack"""
+        """
+        Upload and process a PDF file using Haystack.
+
+        Args:
+            file: The PDF file to upload.
+            db: The database session.
+
+        Returns:
+            FileMetadata: The metadata of the uploaded file.
+
+        Raises:
+            InvalidFileTypeError: If the file is not a PDF.
+        """
         # Validate file
         if not file.filename.endswith(".pdf"):
             raise InvalidFileTypeError("Only PDF files are allowed")
@@ -51,7 +80,15 @@ class DocumentService:
         )
 
     async def get_all_files(self, db: AsyncSession) -> List[FileMetadata]:
-        """Get all uploaded files"""
+        """
+        Get all uploaded files.
+
+        Args:
+            db: The database session.
+
+        Returns:
+            List[FileMetadata]: A list of all uploaded files.
+        """
         result = await db.execute(select(Document))
         documents = result.scalars().all()
 

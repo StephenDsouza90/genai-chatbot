@@ -26,7 +26,18 @@ haystack_service = HaystackService()
 
 
 def get_services(redis_client: RedisClient = Depends(get_redis)):
-    """Dependency to get services with Redis"""
+    """
+    Dependency to get services with Redis.
+
+    This function is used to get the services with the Redis client.
+
+    Args:
+        redis_client: The Redis client.
+
+    Returns:
+        Tuple[DocumentService, ChatService, SessionService]: The services.
+    """
+
     session_service = SessionService(redis_client)
     document_service = DocumentService(haystack_service)
     chat_service = ChatService(haystack_service, session_service)
@@ -39,7 +50,23 @@ async def upload_file(
     db: AsyncSession = Depends(get_db),
     services=Depends(get_services),
 ):
-    """Upload a PDF file and process it using Haystack"""
+    """
+    Upload a PDF file and process it using Haystack.
+
+    This function is used to upload a PDF file and process it using Haystack.
+
+    Args:
+        file: The file to upload.
+        db: The database session.
+        services: The services.
+
+    Returns:
+        UploadResponse: The response containing the message, file ID, and filename.
+
+    Raises:
+        HTTPException: If there is an error uploading the file.
+    """
+
     try:
         document_service, _, _ = services
         file_metadata = await document_service.upload_file(file, db)
@@ -54,7 +81,22 @@ async def upload_file(
 
 @file_router.get("/files", response_model=List[FileMetadata])
 async def get_files(db: AsyncSession = Depends(get_db), services=Depends(get_services)):
-    """Get list of all uploaded files"""
+    """
+    Get list of all uploaded files.
+
+    This function is used to get the list of all uploaded files.
+
+    Args:
+        db: The database session.
+        services: The services.
+
+    Returns:
+        List[FileMetadata]: The list of all uploaded files.
+
+    Raises:
+        HTTPException: If there is an error getting the list of files.
+    """
+
     try:
         document_service, _, _ = services
         return await document_service.get_all_files(db)
@@ -64,7 +106,21 @@ async def get_files(db: AsyncSession = Depends(get_db), services=Depends(get_ser
 
 @chat_router.post("/create-session", response_model=CreateSessionResponse)
 async def create_chat_session(services=Depends(get_services)):
-    """Create a new chat session"""
+    """
+    Create a new chat session.
+
+    This function is used to create a new chat session.
+
+    Args:
+        services: The services.
+
+    Returns:
+        CreateSessionResponse: The response containing the session ID and message.
+
+    Raises:
+        HTTPException: If there is an error creating the session.
+    """
+
     try:
         _, _, session_service = services
         return await session_service.create_session()
@@ -74,7 +130,20 @@ async def create_chat_session(services=Depends(get_services)):
 
 @chat_router.post("/chat", response_model=ChatResponse)
 async def chat(message: ChatMessage, services=Depends(get_services)):
-    """Process chat message and return AI response with session management"""
+    """
+    Process chat message and return AI response with session management.
+
+    This function is used to process a chat message and return an AI response with session management.
+
+    Args:
+        message: The chat message to process.
+        services: The services.
+
+    Returns:
+        ChatResponse: The response containing the answer, sources, and session ID.
+
+    """
+
     try:
         _, chat_service, _ = services
         return await chat_service.chat(
@@ -86,7 +155,20 @@ async def chat(message: ChatMessage, services=Depends(get_services)):
 
 @chat_router.delete("/session/{session_id}")
 async def delete_session(session_id: str, services=Depends(get_services)):
-    """Delete a chat session"""
+    """
+    Delete a chat session.
+
+    This function is used to delete a chat session.
+
+    Args:
+        session_id: The ID of the session to delete.
+        services: The services.
+
+    Returns:
+        Dict: The response containing the message.
+
+    """
+
     try:
         _, _, session_service = services
         success = await session_service.delete_session(session_id)
@@ -100,7 +182,22 @@ async def delete_session(session_id: str, services=Depends(get_services)):
 
 @chat_router.get("/session/{session_id}/info")
 async def get_session_info(session_id: str, services=Depends(get_services)):
-    """Get session information (for debugging/monitoring)"""
+    """
+    Get session information (for debugging/monitoring).
+
+    This function is used to get the session information for debugging/monitoring.
+
+    Args:
+        session_id: The ID of the session to get information for.
+        services: The services.
+
+    Returns:
+        Dict: The session information.
+
+    Raises:
+        HTTPException: If there is an error getting the session information.
+    """
+
     try:
         _, _, session_service = services
         info = await session_service.get_session_info(session_id)
@@ -114,7 +211,21 @@ async def get_session_info(session_id: str, services=Depends(get_services)):
 
 @chat_router.get("/sessions", response_model=List[Dict])
 async def get_all_sessions(services=Depends(get_services)):
-    """Get list of all chat sessions"""
+    """
+    Get list of all chat sessions.
+
+    This function is used to get the list of all chat sessions.
+
+    Args:
+        services: The services.
+
+    Returns:
+        List[Dict]: The list of all chat sessions.
+
+    Raises:
+        HTTPException: If there is an error getting the list of sessions.
+    """
+
     try:
         _, _, session_service = services
         sessions = await session_service.get_all_sessions()
@@ -125,7 +236,22 @@ async def get_all_sessions(services=Depends(get_services)):
 
 @chat_router.get("/session/{session_id}/history")
 async def get_session_history(session_id: str, services=Depends(get_services)):
-    """Get chat history for a specific session"""
+    """
+    Get chat history for a specific session.
+
+    This function is used to get the chat history for a specific session.
+
+    Args:
+        session_id: The ID of the session to get history for.
+        services: The services.
+
+    Returns:
+        Dict: The chat history for the session.
+
+    Raises:
+        HTTPException: If there is an error getting the chat history.
+    """
+
     try:
         _, _, session_service = services
         history = await session_service.get_session_history(session_id)
