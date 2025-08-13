@@ -8,7 +8,7 @@ import { Menu, X } from 'lucide-react';
 const ChatApp = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const { initializeSession } = useChatStore();
+  const { initializeSession, fetchSessions } = useChatStore();
   const { loadFiles } = useFileStore();
 
   useEffect(() => {
@@ -26,9 +26,10 @@ const ChatApp = () => {
     // Initialize app data
     initializeSession();
     loadFiles();
+    fetchSessions();
 
     return () => window.removeEventListener('resize', checkMobile);
-  }, [initializeSession, loadFiles]);
+  }, [initializeSession, loadFiles, fetchSessions]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);

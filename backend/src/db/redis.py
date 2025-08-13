@@ -113,6 +113,14 @@ class RedisClient:
         except Exception as e:
             print(f"Redis list trim error: {e}")
             return False
+    
+    async def keys(self, pattern: str) -> List[str]:
+        """Get all keys matching a pattern"""
+        try:
+            return await self.redis.keys(pattern)
+        except Exception as e:
+            print(f"Redis keys error: {e}")
+            return []
 
 
 # Global Redis client instance to be reused across the app

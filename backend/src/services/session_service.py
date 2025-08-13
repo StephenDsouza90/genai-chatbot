@@ -1,5 +1,6 @@
 import uuid
 from typing import List, Dict, Optional
+from datetime import datetime
 
 from src.db.redis import RedisClient
 from src.models.schemas import CreateSessionResponse
@@ -28,7 +29,7 @@ class SessionService:
         session_data = {
             "session_id": session_id,
             "messages": [],
-            "created_at": str(uuid.uuid1().time)
+            "created_at": str(int(datetime.now().timestamp() * 1000))  # Unix timestamp in milliseconds
         }
         
         success = await self.redis.set_json(session_key, session_data, self.session_ttl)
@@ -112,3 +113,32 @@ class SessionService:
             "created_at": session_data.get("created_at"),
             "ttl_remaining": await self.redis.redis.ttl(session_key) if self.redis.redis else -1
         }
+
+    async def get_all_sessions(self) -> List[Dict]:
+        """Get all chat sessions"""
+        try:
+            # Get all keys with session prefix
+            session_keys = await self.redis.keys(f"{self.session_prefix}*")
+            sessions = []
+            
+            for key in session_keys:
+                session_id = key.replace(self.session_prefix, "")
+                session_data = await self.redis.get_json(key)
+                
+                if session_data:
+                    session_info = {
+                        "session_id": session_id,
+                        "message_count": len(session_data.get("messages", [])),
+                        "created_at": session_data.get("created_at"),
+                        "ttl_remaining": await self.redis.redis.ttl(key) if self.redis.redis else -1,
+                        "last_message": session_data.get("messages", [])[-1] if session_data.get("messages") else None
+                    }
+                    sessions.append(session_info)
+            
+            # Sort by creation time (newest first)
+            sessions.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+            return sessions
+            
+        except Exception as e:
+            print(f"Error getting all sessions: {e}")
+            return []

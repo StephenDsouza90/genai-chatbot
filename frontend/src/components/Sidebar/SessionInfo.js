@@ -1,10 +1,10 @@
 import React from 'react';
 import { useChatStore } from '../../store/chatStore';
-import { MessageSquare, RotateCcw, Loader } from 'lucide-react';
+import { MessageSquare, RotateCcw, Loader, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SessionInfo = () => {
-  const { sessionId, messages, clearChat, isLoading } = useChatStore();
+  const { sessionId, messages, clearChat, isLoading, initializeSession } = useChatStore();
 
   const handleClearChat = () => {
     if (messages.length === 0) return;
@@ -13,9 +13,27 @@ const SessionInfo = () => {
     toast.success('Chat cleared');
   };
 
+  const handleNewChat = async () => {
+    try {
+      await initializeSession();
+      toast.success('New chat session created');
+    } catch (error) {
+      toast.error('Failed to create new session');
+    }
+  };
+
   return (
     <div className="session-info">
-      <h3 className="section-title">Chat Session</h3>
+      <div className="section-header">
+        <h3 className="section-title">Current Session</h3>
+        <button 
+          className="new-chat-btn"
+          onClick={handleNewChat}
+          title="Start new chat"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
       
       <div className="session-card">
         <div className="session-status">
@@ -58,11 +76,37 @@ const SessionInfo = () => {
           width: 100%;
         }
 
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
         .section-title {
           font-size: 1.1rem;
           font-weight: 600;
           color: #1e293b;
-          margin-bottom: 1rem;
+          margin: 0;
+        }
+
+        .new-chat-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          background: #667eea;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .new-chat-btn:hover {
+          background: #5a67d8;
+          transform: translateY(-1px);
         }
 
         .session-card {
@@ -154,6 +198,15 @@ const SessionInfo = () => {
         .clear-btn:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+        }
+
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

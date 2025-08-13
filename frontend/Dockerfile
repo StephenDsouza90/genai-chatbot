@@ -2,11 +2,9 @@ FROM node:20-alpine as build
 
 WORKDIR /app
 
-COPY package.json package-lock.json* yarn.lock* ./
+COPY package*.json ./
 
-RUN if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then npm ci; \
-    else npm install; fi
+RUN npm ci
 
 COPY . .
 

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -119,4 +119,31 @@ async def get_session_info(
         else:
             raise HTTPException(status_code=404, detail="Session not found")
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@chat_router.get("/sessions", response_model=List[Dict])
+async def get_all_sessions(services = Depends(get_services)):
+    """Get list of all chat sessions"""
+    try:
+        _, _, session_service = services
+        sessions = await session_service.get_all_sessions()
+        return sessions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@chat_router.get("/session/{session_id}/history")
+async def get_session_history(
+    session_id: str,
+    services = Depends(get_services)
+):
+    """Get chat history for a specific session"""
+    try:
+        _, _, session_service = services
+        history = await session_service.get_session_history(session_id)
+        return {"session_id": session_id, "messages": history}
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail="Session not found")
         raise HTTPException(status_code=500, detail=str(e))

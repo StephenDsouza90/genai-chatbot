@@ -2,6 +2,7 @@ import React from 'react';
 import FileUpload from './FileUpload';
 import FileList from './FileList';
 import SessionInfo from './SessionInfo';
+import SessionList from './SessionList';
 import { Bot } from 'lucide-react';
 
 const Sidebar = ({ onClose }) => {
@@ -16,6 +17,7 @@ const Sidebar = ({ onClose }) => {
 
       <div className="sidebar-content">
         <SessionInfo />
+        <SessionList />
         <FileUpload />
         <FileList />
       </div>

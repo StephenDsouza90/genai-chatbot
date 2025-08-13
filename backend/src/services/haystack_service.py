@@ -68,10 +68,7 @@ class HaystackService:
         
         # Add components
         self.indexing_pipeline.add_component("converter", PyPDFToDocument())
-        self.indexing_pipeline.add_component(
-            "splitter", 
-            DocumentSplitter(split_by="word", split_length=200, split_overlap=50)
-        )
+        self.indexing_pipeline.add_component("splitter", DocumentSplitter(split_by="word", split_length=200, split_overlap=50))
         self.indexing_pipeline.add_component("meta_adder", MetadataAdder())
         self.indexing_pipeline.add_component(
             "embedder", 
@@ -132,23 +129,12 @@ class HaystackService:
         self.rag_pipeline.connect("embedder.embedding", "retriever.query_embedding")
         self.rag_pipeline.connect("retriever", "prompt_builder.documents")
         self.rag_pipeline.connect("prompt_builder", "llm")
-    
+
     def _get_prompt_template(self) -> str:
         """Get the prompt template for RAG"""
         return """
-        You are a helpful assistant that answers questions based on the provided context and chat history.
-        
-        IMPORTANT RULES:
-        1. Use information from the context documents to answer questions.
-        2. Use the chat history to understand references (like "he", "she", "it", "they") and maintain conversation continuity.
-        3. When pronouns or unclear references are used, look at the chat history to identify who or what is being discussed.
-        4. If the context doesn't contain enough information to answer the question, say "I cannot answer this question based on the provided context" with giving a reason.
-        5. Do not make assumptions beyond what can be reasonably inferred from the context and chat history.
-        6. If you're unsure about any detail, acknowledge the uncertainty
-        7. When calculating time periods or durations, use the current date: {{ current_date }}. Always calculate durations from the start date to the current date, not from any other reference point.
-        8. For any date-based calculations (experience, project duration, time periods, etc.), use the current date ({{ current_date }}) as the end point, not any other reference date.
-        9. You can perform future date calculations if given a specific future date, as long as you're only doing mathematical date arithmetic from known start dates.
-        
+        Current date: {{ current_date }}
+
         Context Documents:
         {% for document in documents %}
             {{ document.content }}
@@ -160,10 +146,26 @@ class HaystackService:
         {% endfor %}
         
         Question: {{ question }}
-        
-        Answer based on the context documents above, using the chat history to understand references and maintain conversation flow:
+
+        Rules:
+        1. Only use information from the provided documents and chat history.
+        - If insufficient information, reply: "I cannot answer this question based on the provided context." 
+            Then briefly explain why.
+        2. Resolve unclear references (e.g., “he”, “she”, “it”) from chat history. If still ambiguous, state uncertainty.
+        3. Do not fabricate facts beyond reasonable inference.
+        4. For dates/durations, use the current date unless another date is specified.
+        5. Keep answers concise; use bullet points or short paragraphs.
+        6. After answering, ask 1–2 relevant follow-up questions based on the documents that the user has not yet asked.
+        - Examples: “Do you also want me to check...?”, “Would you like me to explain how this relates to...?”
+
+        Answering Process:
+        1. Search documents for relevant facts.
+        2. Check chat history for missing context or references.
+        3. Provide the most accurate answer possible.
+        4. If unsure, explain uncertainty.
+        5. End with proactive follow-up questions.
         """
-    
+
     async def process_document(self, file_content: bytes, filename: str, document_id: UUID) -> Dict[str, Any]:
         """Process a document using Haystack pipeline"""
         # Save file temporarily

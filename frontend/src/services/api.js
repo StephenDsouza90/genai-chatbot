@@ -48,4 +48,8 @@ export const chatAPI = {
   deleteSession: (sessionId) => api.delete(`/session/${sessionId}`),
   
   getSessionInfo: (sessionId) => api.get(`/session/${sessionId}/info`),
+  
+  getAllSessions: () => api.get('/sessions'),
+  
+  getSessionHistory: (sessionId) => api.get(`/session/${sessionId}/history`),
 };
