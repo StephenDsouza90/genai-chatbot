@@ -240,7 +240,7 @@ class HaystackService:
         1. Only use information from the provided documents and chat history.
         - If insufficient information, reply: "I cannot answer this question based on the provided context." 
         - Then briefly explain why.
-        2. Resolve unclear references (e.g., “he”, “she”, “it”) from chat history. If still ambiguous, state uncertainty.
+        2. Resolve unclear references from chat history. If still ambiguous, state uncertainty.
         3. Do not fabricate facts beyond reasonable inference.
         4. For dates/durations, use the current date unless another date is specified.
         5. Provide a comprehensive, numbered, step-by-step guide that preserves all enumerated steps found in the context. Do not omit steps. Maintain the original order when possible and include field names and button/icon actions exactly as stated.
