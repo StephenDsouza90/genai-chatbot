@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.database import get_db
 from src.db.redis import get_redis, RedisClient
 from src.models.schemas import (
-    FileMetadata, ChatMessage, ChatResponse, UploadResponse, CreateSessionResponse
+    FileMetadata,
+    ChatMessage,
+    ChatResponse,
+    UploadResponse,
+    CreateSessionResponse,
 )
 from src.services.document_service import DocumentService
 from src.services.chat_service import ChatService
@@ -33,7 +37,7 @@ def get_services(redis_client: RedisClient = Depends(get_redis)):
 async def upload_file(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    services = Depends(get_services)
+    services=Depends(get_services),
 ):
     """Upload a PDF file and process it using Haystack"""
     try:
@@ -42,17 +46,14 @@ async def upload_file(
         return UploadResponse(
             message="File uploaded and processed successfully",
             file_id=file_metadata.id,
-            filename=file_metadata.filename
+            filename=file_metadata.filename,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @file_router.get("/files", response_model=List[FileMetadata])
-async def get_files(
-    db: AsyncSession = Depends(get_db),
-    services = Depends(get_services)
-):
+async def get_files(db: AsyncSession = Depends(get_db), services=Depends(get_services)):
     """Get list of all uploaded files"""
     try:
         document_service, _, _ = services
@@ -62,7 +63,7 @@ async def get_files(
 
 
 @chat_router.post("/create-session", response_model=CreateSessionResponse)
-async def create_chat_session(services = Depends(get_services)):
+async def create_chat_session(services=Depends(get_services)):
     """Create a new chat session"""
     try:
         _, _, session_service = services
@@ -72,27 +73,19 @@ async def create_chat_session(services = Depends(get_services)):
 
 
 @chat_router.post("/chat", response_model=ChatResponse)
-async def chat(
-    message: ChatMessage,
-    services = Depends(get_services)
-):
+async def chat(message: ChatMessage, services=Depends(get_services)):
     """Process chat message and return AI response with session management"""
     try:
         _, chat_service, _ = services
         return await chat_service.chat(
-            message.question, 
-            message.document_ids, 
-            message.session_id
+            message.question, message.document_ids, message.session_id
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @chat_router.delete("/session/{session_id}")
-async def delete_session(
-    session_id: str, 
-    services = Depends(get_services)
-):
+async def delete_session(session_id: str, services=Depends(get_services)):
     """Delete a chat session"""
     try:
         _, _, session_service = services
@@ -106,10 +99,7 @@ async def delete_session(
 
 
 @chat_router.get("/session/{session_id}/info")
-async def get_session_info(
-    session_id: str,
-    services = Depends(get_services)
-):
+async def get_session_info(session_id: str, services=Depends(get_services)):
     """Get session information (for debugging/monitoring)"""
     try:
         _, _, session_service = services
@@ -123,7 +113,7 @@ async def get_session_info(
 
 
 @chat_router.get("/sessions", response_model=List[Dict])
-async def get_all_sessions(services = Depends(get_services)):
+async def get_all_sessions(services=Depends(get_services)):
     """Get list of all chat sessions"""
     try:
         _, _, session_service = services
@@ -134,10 +124,7 @@ async def get_all_sessions(services = Depends(get_services)):
 
 
 @chat_router.get("/session/{session_id}/history")
-async def get_session_history(
-    session_id: str,
-    services = Depends(get_services)
-):
+async def get_session_history(session_id: str, services=Depends(get_services)):
     """Get chat history for a specific session"""
     try:
         _, _, session_service = services

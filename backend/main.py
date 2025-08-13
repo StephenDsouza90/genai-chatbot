@@ -27,7 +27,7 @@ app = FastAPI(
     title="AI Chatbot API",
     description="A RAG-based chatbot for PDF documents using Haystack",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 settings = Settings()

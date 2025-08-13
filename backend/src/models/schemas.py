@@ -16,6 +16,7 @@ class FileMetadata(BaseModel):
         """
         This is used to convert the model to a dictionary when it is returned in a response.
         """
+
         from_attributes = True
 
 

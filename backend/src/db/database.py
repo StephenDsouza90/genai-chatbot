@@ -9,16 +9,10 @@ from src.models.database import Base
 # Convert sync postgres URL to async
 settings = Settings()
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    poolclass=NullPool,
-    echo=True
-)
+engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool, echo=True)
 
 AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False
+    engine, class_=AsyncSession, expire_on_commit=False
 )
 
 
@@ -27,7 +21,7 @@ async def init_db():
     async with engine.begin() as conn:
         # Enable pgvector extension
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        
+
         # Create tables
         await conn.run_sync(Base.metadata.create_all)
 

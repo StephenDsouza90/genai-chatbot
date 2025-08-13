@@ -5,18 +5,24 @@ from typing import List, Dict, Any
 from uuid import UUID
 
 from haystack import Pipeline, component
-from haystack.components.embedders import AzureOpenAITextEmbedder, AzureOpenAIDocumentEmbedder
-from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.embedders import (
+    AzureOpenAITextEmbedder,
+    AzureOpenAIDocumentEmbedder,
+)
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.components.builders import PromptBuilder
 from haystack.components.converters import PyPDFToDocument
 from haystack.components.preprocessors import DocumentSplitter
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.dataclasses import Document as HaystackDocument, ChatMessage as HaystackChatMessage
+from haystack.dataclasses import (
+    Document as HaystackDocument,
+    ChatMessage as HaystackChatMessage,
+)
 from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
 from haystack.utils import Secret
 from haystack.components.writers import DocumentWriter
-from haystack_integrations.components.retrievers.pgvector.embedding_retriever import PgvectorEmbeddingRetriever
+from haystack_integrations.components.retrievers.pgvector.embedding_retriever import (
+    PgvectorEmbeddingRetriever,
+)
 
 from src.core.config import Settings
 
@@ -47,7 +53,9 @@ class HaystackService:
         # Prepare a psycopg-compatible connection string for Pgvector
         pg_conn_str = self.settings.DATABASE_URL or ""
         if pg_conn_str.startswith("postgresql+asyncpg://"):
-            pg_conn_str = pg_conn_str.replace("postgresql+asyncpg://", "postgresql://", 1)
+            pg_conn_str = pg_conn_str.replace(
+                "postgresql+asyncpg://", "postgresql://", 1
+            )
 
         # Initialize PGVector document store (ensure dimension matches embedder)
         self.document_store = PgvectorDocumentStore(
@@ -57,40 +65,49 @@ class HaystackService:
             vector_function="cosine_similarity",
             # recreate_table=True,
         )
-        
+
         # Initialize pipelines
         self._init_indexing_pipeline()
         self._init_rag_pipeline()
-    
+
     def _init_indexing_pipeline(self):
         """Initialize the document indexing pipeline"""
         self.indexing_pipeline = Pipeline()
-        
+
         # Add components
         self.indexing_pipeline.add_component("converter", PyPDFToDocument())
-        self.indexing_pipeline.add_component("splitter", DocumentSplitter(split_by="word", split_length=200, split_overlap=50))
+        self.indexing_pipeline.add_component(
+            "splitter",
+            DocumentSplitter(
+                split_by=self.settings.SPLIT_BY,
+                split_length=self.settings.SPLIT_LENGTH,
+                split_overlap=self.settings.SPLIT_OVERLAP,
+            ),
+        )
         self.indexing_pipeline.add_component("meta_adder", MetadataAdder())
         self.indexing_pipeline.add_component(
-            "embedder", 
+            "embedder",
             AzureOpenAIDocumentEmbedder(
                 azure_endpoint=self.settings.AZURE_OPENAI_ENDPOINT,
                 api_version=self.settings.API_VERSION,
                 azure_deployment=self.settings.EMBEDDING_MODEL,
-                api_key=Secret.from_token(self.settings.OPENAI_API_KEY)
-            )
+                api_key=Secret.from_token(self.settings.OPENAI_API_KEY),
+            ),
         )
-        self.indexing_pipeline.add_component("writer", DocumentWriter(document_store=self.document_store))
-        
+        self.indexing_pipeline.add_component(
+            "writer", DocumentWriter(document_store=self.document_store)
+        )
+
         # Connect components
         self.indexing_pipeline.connect("converter", "splitter")
         self.indexing_pipeline.connect("splitter", "meta_adder.documents")
         self.indexing_pipeline.connect("meta_adder", "embedder")
         self.indexing_pipeline.connect("embedder", "writer")
-    
+
     def _init_rag_pipeline(self):
         """Initialize the RAG pipeline"""
         self.rag_pipeline = Pipeline()
-        
+
         # Add components
         self.rag_pipeline.add_component(
             "embedder",
@@ -98,14 +115,18 @@ class HaystackService:
                 azure_endpoint=self.settings.AZURE_OPENAI_ENDPOINT,
                 api_version=self.settings.API_VERSION,
                 azure_deployment=self.settings.EMBEDDING_MODEL,
-                api_key=Secret.from_token(self.settings.OPENAI_API_KEY)
-            )
+                api_key=Secret.from_token(self.settings.OPENAI_API_KEY),
+            ),
         )
         self.rag_pipeline.add_component(
             "retriever",
-            PgvectorEmbeddingRetriever(document_store=self.document_store, top_k=5)
+            PgvectorEmbeddingRetriever(
+                document_store=self.document_store, top_k=self.settings.TOP_K
+            ),
         )
-        self.rag_pipeline.add_component("prompt_builder", PromptBuilder(template=self._get_prompt_template()))
+        self.rag_pipeline.add_component(
+            "prompt_builder", PromptBuilder(template=self._get_prompt_template())
+        )
         self.rag_pipeline.add_component(
             "llm",
             AzureOpenAIGenerator(
@@ -113,7 +134,6 @@ class HaystackService:
                 api_version=self.settings.API_VERSION,
                 azure_deployment=self.settings.CHAT_MODEL,
                 api_key=Secret.from_token(self.settings.OPENAI_API_KEY),
-
                 # Parameters for better control:
                 generation_kwargs={
                     "temperature": self.settings.TEMPERATURE,
@@ -121,10 +141,10 @@ class HaystackService:
                     "top_p": self.settings.TOP_P,
                     "presence_penalty": self.settings.PRESENCE_PENALTY,
                     "frequency_penalty": self.settings.FREQUENCY_PENALTY,
-                }
-            )
+                },
+            ),
         )
-        
+
         # Connect components
         self.rag_pipeline.connect("embedder.embedding", "retriever.query_embedding")
         self.rag_pipeline.connect("retriever", "prompt_builder.documents")
@@ -150,11 +170,11 @@ class HaystackService:
         Rules:
         1. Only use information from the provided documents and chat history.
         - If insufficient information, reply: "I cannot answer this question based on the provided context." 
-            Then briefly explain why.
+        - Then briefly explain why.
         2. Resolve unclear references (e.g., “he”, “she”, “it”) from chat history. If still ambiguous, state uncertainty.
         3. Do not fabricate facts beyond reasonable inference.
         4. For dates/durations, use the current date unless another date is specified.
-        5. Keep answers concise; use bullet points or short paragraphs.
+        5. Provide a comprehensive, numbered, step-by-step guide that preserves all enumerated steps found in the context. Do not omit steps. Maintain the original order when possible and include field names and button/icon actions exactly as stated.
         6. After answering, ask 1–2 relevant follow-up questions based on the documents that the user has not yet asked.
         - Examples: “Do you also want me to check...?”, “Would you like me to explain how this relates to...?”
 
@@ -166,13 +186,15 @@ class HaystackService:
         5. End with proactive follow-up questions.
         """
 
-    async def process_document(self, file_content: bytes, filename: str, document_id: UUID) -> Dict[str, Any]:
+    async def process_document(
+        self, file_content: bytes, filename: str, document_id: UUID
+    ) -> Dict[str, Any]:
         """Process a document using Haystack pipeline"""
         # Save file temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
             temp_file.write(file_content)
             temp_file_path = temp_file.name
-        
+
         try:
             # Run indexing pipeline
             result = self.indexing_pipeline.run(
@@ -187,32 +209,38 @@ class HaystackService:
                     },
                 }
             )
-            
+
             return {
                 "documents_processed": result["writer"]["documents_written"],
-                "success": True
+                "success": True,
             }
-        
+
         finally:
             # Clean up temporary file
             os.unlink(temp_file_path)
-    
-    async def query(self, question: str, document_ids: List[UUID], chat_history: List[Dict[str, str]]) -> Dict[str, Any]:
+
+    async def query(
+        self,
+        question: str,
+        document_ids: List[UUID],
+        chat_history: List[Dict[str, str]],
+    ) -> Dict[str, Any]:
         """Query documents using RAG pipeline"""
         # Filter documents by document_ids
         filters = {
             "field": "meta.document_id",
             "operator": "in",
-            "value": [str(doc_id) for doc_id in document_ids]
+            "value": [str(doc_id) for doc_id in document_ids],
         }
-        
+
         # Convert chat history to Haystack format
         haystack_history = [
-            HaystackChatMessage.from_user(msg["content"]) if msg["role"] == "user" 
+            HaystackChatMessage.from_user(msg["content"])
+            if msg["role"] == "user"
             else HaystackChatMessage.from_assistant(msg["content"])
             for msg in chat_history
         ]
-        
+
         # Run RAG pipeline
         result = self.rag_pipeline.run(
             {
@@ -221,31 +249,33 @@ class HaystackService:
                 "prompt_builder": {
                     "question": question,
                     "chat_history": haystack_history,
-                    "current_date": datetime.now().strftime("%B %d, %Y")
-                }
+                    "current_date": datetime.now().strftime("%B %d, %Y"),
+                },
             },
-            include_outputs_from={"retriever"}
+            include_outputs_from={"retriever"},
         )
-        
+
         # Extract response and sources
         response = result["llm"]["replies"][0]
         documents = result.get("retriever", {}).get("documents", [])
-        
+
         sources = []
         for doc in documents:
             filename = doc.meta.get("filename", "Unknown")
             sources.append(f"{filename} (score: {doc.score:.3f})")
-        
+
         confidence_score = self._calculate_confidence(question, documents)
 
         return {
             "answer": response,
             "sources": sources,
             "retrieved_documents": len(documents),
-            "confidence_score": confidence_score
+            "confidence_score": confidence_score,
         }
 
-    def _calculate_confidence(self, question: str, documents: List[HaystackDocument]) -> float:
+    def _calculate_confidence(
+        self, question: str, documents: List[HaystackDocument]
+    ) -> float:
         """Calculate confidence score based on document relevance and context"""
         # Simple scoring:
         # - 100% if question is in context
